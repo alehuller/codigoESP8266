@@ -1,0 +1,102 @@
+#include <ESP8266WiFi.h>
+String apiKey = "1ZA0OYZ6IAR7FBJC"; // Enter your Write API key from ThingSpeak
+const char *ssid = "ticketstomydownfall"; // replace with your wifi ssid and wpa2 key
+const char *pass = "@xacaracablim1A$";
+const char* server = "api.thingspeak.com";
+WiFiClient client;
+String MakerIFTTT_Key ;
+;String MakerIFTTT_Event;
+char *append_str(char *here, String s) {  int i=0; while (*here++ = s[i]){i++;};return here-1;}
+char *append_ul(char *here, unsigned long u) { char buf[20]; return append_str(here, ultoa(u, buf, 10));}
+char post_rqst[256];char *p;char *content_length_here;char *json_start;int compi;
+void setup()
+{
+Serial.begin(9600);
+delay(10);
+Serial.println("Connecting to ");
+Serial.println(ssid);
+WiFi.begin(ssid, pass);
+while (WiFi.status() != WL_CONNECTED)
+{
+delay(500);
+Serial.print(".");
+}
+Serial.println("");
+Serial.println("WiFi connected");
+}
+void loop()
+{
+float h = analogRead(A0);
+if (isnan(h))
+{
+Serial.println("Failed to read from MQ-6 sensor!");
+return;
+}
+ 
+if (client.connect(server, 80)) // "184.106.153.149" or api.thingspeak.com
+{
+String postStr = apiKey;
+postStr += "&field1=";
+postStr += String(h/1023*100);
+postStr += "r\n";
+client.print("POST /update HTTP/1.1\n");
+client.print("Host: api.thingspeak.com\n");
+client.print("Connection: close\n");
+client.print("X-THINGSPEAKAPIKEY: " + apiKey + "\n");
+client.print("Content-Type: application/x-www-form-urlencoded\n");
+client.print("Content-Length: ");
+client.print(postStr.length());
+client.print("\n\n");
+client.print(postStr);
+Serial.print("Gas Level: ");
+Serial.println(h/1023*100);
+Serial.println("Data Send to Thingspeak");
+}
+  if (h/1023*100 > 35)
+   {
+    if (client.connect("maker.ifttt.com",80)) {
+    MakerIFTTT_Key ="b_wHpGy5d-XBJDVUAwHZlA";
+    MakerIFTTT_Event ="gas_elevado";
+    p = post_rqst;
+    p = append_str(p, "POST /trigger/");
+    p = append_str(p, MakerIFTTT_Event);
+    p = append_str(p, "/with/key/");
+    p = append_str(p, MakerIFTTT_Key);
+    p = append_str(p, " HTTP/1.1\r\n");
+    p = append_str(p, "Host: maker.ifttt.com\r\n");
+    p = append_str(p, "Content-Type: application/json\r\n");
+    p = append_str(p, "Content-Length: ");
+    content_length_here = p;
+    p = append_str(p, "NN\r\n");
+    p = append_str(p, "\r\n");
+    json_start = p;
+    p = append_str(p, "{\"value1\":\"");
+    p = append_str(p, "ESP8266");
+    p = append_str(p, "\",\"value2\":\"");
+    p = append_str(p, "ALEJANDRO, EMERGÊNCIA!!!");
+    p = append_str(p, "\",\"value3\":\"");
+    p = append_str(p, "NÍVEL DE GÁS ELEVADO!!!");
+    p = append_str(p, "\"}");
+
+    compi= strlen(json_start);
+    content_length_here[0] = '0' + (compi/10);
+    content_length_here[1] = '0' + (compi%10);
+    client.print(post_rqst);
+
+  }
+  Serial.println("Your message send...............");
+  Serial.println("Gas leakage is detected");
+  delay(5000);
+  }
+
+   else 
+   {
+    Serial.println("No gas above level 35");
+   }
+delay(500);
+client.stop();
+Serial.println("Waiting...");
+ 
+// thingspeak needs minimum 15 sec delay between updates.
+delay(1500);
+}
